@@ -15,7 +15,7 @@
 </head>
 
 <body>
-    <script src="./build/three.js"></script>
+    <script type = "text/javascript" src="./build/three.js"></script>
     <script src="./build/OrbitControls.js"></script>
     <script>
       var scene, renderer, camera, earth, sun, moon, camera_controller, xE, yE, xM, yM, angE, angM, rain, rainGeo, rainCount = 40;
@@ -28,8 +28,8 @@
         //cargamos la textura del fondo 
         const loader = new THREE.TextureLoader();
         const texture = loader.load(
-       './universe.jpg',
-       () => {
+       'universe.jpg',
+       function(textura){
         //Dado que la imagen es de 8k y es una imagen general del espacio, tratamos esa imagen como equirectangular y la trasnformamos en una textura Cubemap
         //De esta forma podremos mover la imagen y ver distintas partes del espacio, de la imagen en este caso.
         const rt = new THREE.WebGLCubeRenderTarget(texture.image.height);
@@ -81,7 +81,7 @@
         var sunMaterial = new THREE.MeshStandardMaterial();
         var sunTexture = new THREE.TextureLoader();
         sunTexture.load(
-          '/sun.jpg',
+          'sun.jpg',
           function (textura) {
             sunMaterial.map = textura;
             sunMaterial.emissiveMap = textura;
@@ -97,7 +97,7 @@
         var earthMaterial = new THREE.MeshPhongMaterial();
         var earthTexture = new THREE.TextureLoader();
         earthTexture.load(
-          '/earth.jpg',
+          'earth.jpg',
           function (textura) {
             earthMaterial.map = textura;
           }
@@ -110,7 +110,7 @@
         var moonMaterial = new THREE.MeshPhongMaterial();
         var moonTexture = new THREE.TextureLoader();
         moonTexture.load(
-          '/moon.jpg',
+          'moon.jpg',
           function (textura) {
             moonMaterial.map = textura;
             texture_loaded = true;
@@ -174,9 +174,12 @@
         moon.position.set(xM, yM, 0);
 
         //Para mover los asteriodes cambiamos la velocidad y los movemos, para que parezca lo más real posible
-        rainGeo.vertices.forEach(p => {
-        p.velocity -= 0.1 + Math.random() * 0.1;
-        });
+        for(var i = 0;i<rainGeo.vertices.length;i++){
+          rainGeo.vertices[i].velocity -= 0.1 + Math.random() * 0.1;
+        }
+        // rainGeo.vertices.forEach(p => {
+        // p.velocity -= 0.1 + Math.random() * 0.1;
+        // });
 
         rainGeo.verticesNeedUpdate = true;
         rain.rotation.y +=0.002;
