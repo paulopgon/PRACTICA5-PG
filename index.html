@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title> PRACTICA 5 </title>
+    <style>
+        body{
+            margin: 0;
+        }
+        canvas{
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="./build/three.js"></script>
+    <script src="./build/OrbitControls.js"></script>
+    <script>
+      var scene, renderer, camera, earth, sun, moon, camera_controller, xE, yE, xM, yM, angE, angM, rain, rainGeo, rainCount = 40;
+      angE = 0.0;
+      angM = 0.0;
+        
+      function newScene() {
+        //Creamos la escena con imagen de fondo simulando el espacio
+        scene = new THREE.Scene();
+        //cargamos la textura del fondo 
+        const loader = new THREE.TextureLoader();
+        const texture = loader.load(
+       './universe.jpg',
+       () => {
+        //Dado que la imagen es de 8k y es una imagen general del espacio, tratamos esa imagen como equirectangular y la trasnformamos en una textura Cubemap
+        //De esta forma podremos mover la imagen y ver distintas partes del espacio, de la imagen en este caso.
+        const rt = new THREE.WebGLCubeRenderTarget(texture.image.height);
+        rt.fromEquirectangularTexture(renderer, texture);
+        scene.background = rt;
+      });
+        
+       
+        //Creamos la camara y la colocamos en el eje positivo de z, es decir, donde se encuentra el espectador 
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+        camera.position.z = 300;
+        camera.lookAt(0, 0, 0);
+  
+        //Creamos el render
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+  
+        //Para poder controlar la camara usamos OrbitControls
+        camera_controller = new THREE.OrbitControls(camera, renderer.domElement);
+  
+        //Creamos las iluminaciones
+        //Para simular correctamente la luz del sol, tanto como brilla este como la luz que reciben otros objetos
+        //La primera será para poder simular la luz solar, usamos PointLight (se crea la luz en un punto y se propaga en todas las direcciones) y colocamos dicha luz en la posición del sol.
+        var solarLigth = new THREE.PointLight(0xffffffff, 2);
+        solarLigth.position.set(0, 0, 0);
+        solarLigth.castShadow = true;
+        scene.add(solarLigth);
+
+        //Para iluminar al sol necesitamos 2 iluminaciones del tipo RectAreaLight, que crea un area retangular plana que proyecto la luz hacia un punto
+        //La razón para usar 2 es que, si solamente usamos una, se queda siempre una pequeña parte del sol sin iluminar y se ve bastante feo..
+        //Ponemos un rectangulo en z negativa y otro en z positiva, ambos mirando hacia el sol.
+        var rectLight = new THREE.RectAreaLight( 0x00ffffff, 2,  window.innerWidth, window.innerHeight );
+        rectLight.position.set(0,0,-100);
+        rectLight.lookAt(0,0,0);
+        scene.add( rectLight );
+  
+        var rectLight2 = new THREE.RectAreaLight( 0x00ffffff, 2, window.innerWidth, window.innerHeight );
+        rectLight2.position.set(0,0,100);
+        rectLight2.lookAt(0,0, 0);
+        scene.add( rectLight2 );
+  
+        document.body.appendChild(renderer.domElement);
+  
+        texture_loaded = false;
+        
+        //Creamos el sol, la tierra y la luna
+        //Creamos el sol, el cual será del tipo MeshStandardMaterial para que sea el único afectado por las luces rectangular 
+        var sunMaterial = new THREE.MeshStandardMaterial();
+        var sunTexture = new THREE.TextureLoader();
+        sunTexture.load(
+          '/sun.jpg',
+          function (textura) {
+            sunMaterial.map = textura;
+            sunMaterial.emissiveMap = textura;
+  
+          }
+        );
+
+        var sunGeometry = new THREE.SphereGeometry(15, 64, 64);
+        sun = new THREE.Mesh(sunGeometry, sunMaterial);
+
+
+        //Creamos la tierra y al luna, igual que el sol pero con tipo MeshPhongMaterial, el cual no se ve afectado por la luz rectangular y si por PointLight.
+        var earthMaterial = new THREE.MeshPhongMaterial();
+        var earthTexture = new THREE.TextureLoader();
+        earthTexture.load(
+          '/earth.jpg',
+          function (textura) {
+            earthMaterial.map = textura;
+          }
+        );
+
+        var earthGeometry = new THREE.SphereGeometry(8, 64, 64);
+        earth = new THREE.Mesh(earthGeometry, earthMaterial);
+
+
+        var moonMaterial = new THREE.MeshPhongMaterial();
+        var moonTexture = new THREE.TextureLoader();
+        moonTexture.load(
+          '/moon.jpg',
+          function (textura) {
+            moonMaterial.map = textura;
+            texture_loaded = true;
+  
+          }
+        );
+  
+        var moonGeometry = new THREE.SphereGeometry(4, 64, 64);
+        moon = new THREE.Mesh(moonGeometry, moonMaterial);
+
+        texture_loaded = false;
+        //Para añadir aún más realismo a la práctica se van a crear una especie de lluvia, que en este caso sería el movimiento, de asteroides y cometas, etc.
+        //para eso creamos la geometría de estos, añadiendo el asteroide en un punto random del espacio. Y le damos una velocidad inicial de 0, para posteriormente moverlo.
+        rainGeo = new THREE.Geometry();
+        for(let i=0;i<rainCount;i++) {
+          rainDrop = new THREE.Vector3(
+            Math.random() * 400 -200,
+            Math.random() * 500 - 250,
+            Math.random() * 400 - 200
+          );
+          rainDrop.velocity = {};
+          rainDrop.velocity = 0;
+          rainGeo.vertices.push(rainDrop);
+        }
+
+        //Hacemos el material del asteroide y le cargamos una textura
+        rainMaterial = new THREE.PointsMaterial(
+          size = THREE.MathUtils.randFloatSpread(10)
+        );
+        var rainTexture = new THREE.TextureLoader();
+        rainTexture.load(
+          '/asteroid.jpg',
+          function (textura) {
+            rainMaterial.map = textura;
+            texture_loaded = true;
+          });
+
+        rain = new THREE.Points(rainGeo,rainMaterial);
+        scene.add(rain);
+        
+        //Creamos un grupo para añadir los tres objetos. 
+        var group = new THREE.Object3D();
+        group.add(earth);
+        group.add(sun);
+        group.add(moon);
+        scene.add(group);
+        
+
+      }
+  
+      function gameLoop() {
+        
+        //Para mover la luna y la tierra simplemente vamos cambiando sus posiciones x e y, al igual que en la practica 3 e incrementamos su angulo de giro.
+        xE = 150.0 * Math.cos(degrees_to_radians(angE));
+        yE = 75.0 * Math.sin(degrees_to_radians(angE));
+        xM = xE + 20.0 * Math.cos(degrees_to_radians(angM));
+        yM = yE + 20.0 * Math.sin(degrees_to_radians(angM));
+        angM += 4;
+        angE++;
+        earth.position.set(xE, yE, 0);
+        moon.position.set(xM, yM, 0);
+
+        //Para mover los asteriodes cambiamos la velocidad y los movemos, para que parezca lo más real posible
+        rainGeo.vertices.forEach(p => {
+        p.velocity -= 0.1 + Math.random() * 0.1;
+        });
+
+        rainGeo.verticesNeedUpdate = true;
+        rain.rotation.y +=0.002;
+        if(Math.random() > 0.93) {
+              Math.random()*400,
+              300 + Math.random() *200,
+              100
+        };
+
+        if (texture_loaded) {
+          camera_controller.update();
+          renderer.autoClear = true;
+          renderer.render(scene, camera);
+      
+        }
+        window.requestAnimationFrame(gameLoop);
+      }
+  
+      function degrees_to_radians(degrees) {
+        var pi = Math.PI;
+        return degrees * (pi / 180);
+      }
+      
+      newScene();
+      gameLoop();
+  
+    </script>
+  </body>
+  
+  </html>
